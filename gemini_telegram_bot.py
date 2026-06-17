@@ -1,6 +1,6 @@
 """
 Telegram Bot powered by Google Gemini (free tier)
-Compatible with python-telegram-bot v13.x (stable, simple)
+Compatible with python-telegram-bot v13.x
 """
 
 import os
