@@ -1,13 +1,13 @@
 """
 Telegram Bot powered by Google Gemini (free tier)
-Compatible with python-telegram-bot v13.x
+Compatible with python-telegram-bot v20+
 """
 
 import os
 import logging
 import requests
 from telegram import Update
-from telegram.ext import Updater, MessageHandler, CommandHandler, Filters, CallbackContext
+from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
@@ -46,11 +46,11 @@ def to_gemini_format(history):
     return out
 
 
-def start_cmd(update, ctx):
-    update.message.reply_text("اهلا! بوت Gemini شغال. ابعت اي رسالة.")
+async def start_cmd(update, ctx):
+    await update.message.reply_text("اهلا! بوت Gemini شغال. ابعت اي رسالة.")
 
 
-def handle(update, ctx):
+async def handle(update, ctx):
     uid = update.effective_user.id
     text = update.message.text
     h = user_history.setdefault(uid, [])
@@ -62,18 +62,16 @@ def handle(update, ctx):
         reply = f"صار خطا: {e}"
     h.append({"role": "assistant", "content": reply})
     h[:] = h[-MAX_HISTORY:]
-    update.message.reply_text(reply[:4000])
+    await update.message.reply_text(reply[:4000])
 
 
 def main():
     print("Starting bot...", flush=True)
-    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start_cmd))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle))
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     print("Bot running...", flush=True)
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
 
 if __name__ == "__main__":
