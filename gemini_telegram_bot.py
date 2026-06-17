@@ -1,15 +1,15 @@
 """
 Telegram Bot powered by Google Gemini (free tier)
-Compatible with python-telegram-bot v20+
+Compatible with python-telegram-bot v13.x (stable, simple)
 """
 
 import os
 import logging
 import requests
 from telegram import Update
-from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+from telegram.ext import Updater, MessageHandler, CommandHandler, Filters, CallbackContext
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
@@ -46,11 +46,11 @@ def to_gemini_format(history):
     return out
 
 
-async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("اهلا! بوت Gemini شغال. ابعت اي رسالة.")
+def start_cmd(update, ctx):
+    update.message.reply_text("اهلا! بوت Gemini شغال. ابعت اي رسالة.")
 
 
-async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+def handle(update, ctx):
     uid = update.effective_user.id
     text = update.message.text
     h = user_history.setdefault(uid, [])
@@ -62,16 +62,18 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         reply = f"صار خطا: {e}"
     h.append({"role": "assistant", "content": reply})
     h[:] = h[-MAX_HISTORY:]
-    await update.message.reply_text(reply[:4000])
+    update.message.reply_text(reply[:4000])
 
 
 def main():
     print("Starting bot...", flush=True)
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start_cmd))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle))
     print("Bot running...", flush=True)
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    updater.start_polling()
+    updater.idle()
 
 
 if __name__ == "__main__":
