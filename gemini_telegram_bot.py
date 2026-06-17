@@ -1,11 +1,15 @@
 """
 Telegram Bot powered by Google Gemini (free tier)
+Compatible with python-telegram-bot v20+
 """
 
 import os
+import logging
 import requests
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+
+logging.basicConfig(level=logging.INFO)
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
@@ -28,7 +32,10 @@ def call_gemini(messages):
     }
     r = requests.post(f"{GEMINI_URL}?key={GEMINI_API_KEY}", json=payload, timeout=60)
     r.raise_for_status()
-    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    data = r.json()
+    if "candidates" not in data:
+        raise RuntimeError(f"Gemini error: {data}")
+    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
 def to_gemini_format(history):
@@ -39,11 +46,11 @@ def to_gemini_format(history):
     return out
 
 
-async def start_cmd(update, ctx):
+async def start_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("اهلا! بوت Gemini شغال. ابعت اي رسالة.")
 
 
-async def handle(update, ctx):
+async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     text = update.message.text
     h = user_history.setdefault(uid, [])
@@ -59,11 +66,12 @@ async def handle(update, ctx):
 
 
 def main():
+    print("Starting bot...", flush=True)
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-    print("Bot running...")
-    app.run_polling()
+    print("Bot running...", flush=True)
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
